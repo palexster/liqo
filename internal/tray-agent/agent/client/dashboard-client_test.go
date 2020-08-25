@@ -214,7 +214,7 @@ func TestAgentController_getDashboardConfigLocal(t *testing.T) {
 	var dashHost, dashPort string
 	var envSet bool
 	if dashHost, envSet = os.LookupEnv(EnvLiqoDashHost); envSet {
-		assert.Equal(t, masterNodeIP, dashHost)
+		assert.Equal(t, fmt.Sprintf("http://%s", masterNodeIP), dashHost)
 	} else {
 		t.Fatal("ENV liqodash HOST not set after configLocal")
 	}

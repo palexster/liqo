@@ -91,7 +91,8 @@ func GetIndicator() *Indicator {
 		root.RefreshStatus()
 		root.agentCtrl = client.GetAgentController()
 		if !root.agentCtrl.Connected() {
-			root.NotifyNoConnection()
+			root.ShowErrorNoConnection()
+			root.SetIcon(IconLiqoNoConn)
 		} else {
 			root.SetIcon(IconLiqoMain)
 		}
@@ -292,7 +293,7 @@ func (i *Indicator) RefreshLabel() {
 
 //--------------
 
-//Quit stops the indicator execution
+//Quit stops the indicator execution.
 func (i *Indicator) Quit() {
 	if i != nil {
 		i.Disconnect()

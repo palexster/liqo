@@ -157,7 +157,8 @@ func (ctrl *AgentController) getDashboardConfigLocal() bool {
 	if found {
 		/*having found both address and port, it is possible to set
 		the two env vars*/
-		if err = os.Setenv(EnvLiqoDashHost, masterIP); err == nil {
+		if err = os.Setenv(EnvLiqoDashHost, fmt.Sprintf(
+			"http://%s", masterIP)); err == nil {
 			if err = os.Setenv(EnvLiqoDashPort, nodePortNo); err == nil {
 				return true
 			}
@@ -175,7 +176,7 @@ func (ctrl *AgentController) GetLiqoDashSecret() (*string, error) {
 	errNoToken := errors.New("cannot retrieve token")
 	/*In order to better prune its search, the secret is retrieved by its name, using the
 	service account associated with it.*/
-	c := ctrl.KubeClient()
+	c := ctrl.kubeClient
 	liqoSA, err := c.CoreV1().ServiceAccounts(liqoDashboardNamespace).Get(context.TODO(), liqoDashboardSAName, metav1.GetOptions{})
 	if err != nil {
 		return &token, errNoToken
