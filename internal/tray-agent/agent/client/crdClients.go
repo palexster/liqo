@@ -18,6 +18,13 @@ const (
 	CRAdvertisement CustomResource = "advertisements"
 )
 
+//customResources contains all the registered CustomResource managed by the AgentController.
+//It is used for init and testing purposes.
+var customResources = []CustomResource{
+	CRClusterConfig,
+	CRAdvertisement,
+}
+
 //crdManager stores the resources necessary to manage the CRDs.
 type crdManager struct {
 	//clientMap contains the Controllers for the CRDs managed by the Agent.

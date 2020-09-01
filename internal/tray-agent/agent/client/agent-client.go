@@ -58,7 +58,7 @@ var flagOnce sync.Once
 //AgentController is the data structure that manages Tray Agent interaction with the cluster.
 type AgentController struct {
 	//notifyChannels is a set of channels used by the cache logic to notify a watched event.
-	notifyChannels map[NotifyChannelType]chan string
+	notifyChannels map[NotifyChannel]chan string
 	//kubeClient is a standard kubernetes client.
 	kubeClient kubernetes.Interface
 	//crdManager that manages CRD operations.
@@ -81,7 +81,7 @@ func (ctrl *AgentController) Connected() bool {
 }
 
 //NotifyChannel returns the NotifyChannel of type 'channelType'.
-func (ctrl *AgentController) NotifyChannel(channelType NotifyChannelType) chan string {
+func (ctrl *AgentController) NotifyChannel(channelType NotifyChannel) chan string {
 	return ctrl.notifyChannels[channelType]
 }
 
@@ -178,7 +178,7 @@ func GetAgentController() *AgentController {
 		agentCtrl = &AgentController{}
 		agentCtrl.mocked = mockedController
 		//init the notifyChannels that are kept open during the entire Agent execution.
-		agentCtrl.notifyChannels = make(map[NotifyChannelType]chan string)
+		agentCtrl.notifyChannels = make(map[NotifyChannel]chan string)
 		for _, i := range notifyChannelNames {
 			agentCtrl.notifyChannels[i] = make(chan string, notifyBuffLength)
 		}

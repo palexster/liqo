@@ -1,7 +1,7 @@
 package client
 
 import (
-	clusterConfig "github.com/liqoTech/liqo/api/cluster-config/v1"
+	clusterConfig "github.com/liqoTech/liqo/api/config/v1alpha1"
 )
 
 //createClusterConfigController creates a new CRDController for the Liqo ClusterConfig CRD.

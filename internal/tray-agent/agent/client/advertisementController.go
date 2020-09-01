@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	advertisementApi "github.com/liqoTech/liqo/api/advertisement-operator/v1"
+	advertisementApi "github.com/liqoTech/liqo/api/sharing/v1alpha1"
 	advertisement "github.com/liqoTech/liqo/internal/advertisement-operator"
 	"strings"
 )
