@@ -89,6 +89,9 @@ liqodash_chart:
     repository: "liqo/dashboard"
     pullPolicy: "Always"
   enabled: true
+  service: "liqo-dashboard"
+  serviceAccount: "liqodash-admin-sa"
+  appLabel: "liqo-dashboard"
 
 crdReplicator_chart:
   image:

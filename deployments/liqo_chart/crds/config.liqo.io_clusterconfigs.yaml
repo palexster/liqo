@@ -112,6 +112,36 @@ spec:
               - ingoingConfig
               - outgoingConfig
               type: object
+            agentConfig:
+              description: AgentConfig defines the configuration for Liqo Agent.
+              properties:
+                dashboardConfig:
+                  description: DashboardConfig contains the parameters required for
+                    Liqo Agent to provide access to LiqoDash
+                  properties:
+                    appLabel:
+                      description: AppLabel defines the value of the 'app' label.
+                        All LiqoDash related resources are labelled with it.
+                      type: string
+                    namespace:
+                      description: Namespace defines the namespace LiqoDash resources
+                        belongs to.
+                      type: string
+                    service:
+                      description: Service is the LiqoDash service name.
+                      type: string
+                    serviceAccount:
+                      description: ServiceAccount is the LiqoDash serviceAccount name.
+                      type: string
+                  required:
+                  - appLabel
+                  - namespace
+                  - service
+                  - serviceAccount
+                  type: object
+              required:
+              - dashboardConfig
+              type: object
             discoveryConfig:
               properties:
                 allowUntrustedCA:
@@ -222,6 +252,7 @@ spec:
               type: object
           required:
           - advertisementConfig
+          - agentConfig
           - discoveryConfig
           - liqonetConfig
           type: object

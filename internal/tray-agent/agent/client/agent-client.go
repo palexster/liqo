@@ -63,6 +63,8 @@ type AgentController struct {
 	kubeClient kubernetes.Interface
 	//crdManager that manages CRD operations.
 	*crdManager
+	//agentConf contains Agent configuration parameters.
+	agentConf *agentConfiguration
 	//valid specifies whether the provided kubeconfig actually describes a correct configuration.
 	valid bool
 	//connected specifies whether all AgentController components are correctly up and running.
@@ -175,7 +177,9 @@ func createKubeClient() (kubernetes.Interface, error) {
 //GetAgentController returns an initialized AgentController singleton.
 func GetAgentController() *AgentController {
 	if agentCtrl == nil {
-		agentCtrl = &AgentController{}
+		agentCtrl = &AgentController{
+			agentConf: &agentConfiguration{},
+		}
 		agentCtrl.mocked = mockedController
 		//init the notifyChannels that are kept open during the entire Agent execution.
 		agentCtrl.notifyChannels = make(map[NotifyChannel]chan string)
@@ -190,6 +194,8 @@ func GetAgentController() *AgentController {
 				if agentCtrl.ConnectionTest() {
 					if err = agentCtrl.StartCaches(); err == nil {
 						agentCtrl.connected = true
+						//init configuratino data
+						agentCtrl.acquireClusterConfiguration()
 					} else {
 						//stop already started caches since Agent cannot work
 						//with a partially running system.
