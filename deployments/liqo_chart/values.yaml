@@ -87,11 +87,12 @@ peeringRequestOperator_chart:
 liqodash_chart:
   image:
     repository: "liqo/dashboard"
-    pullPolicy: "Always"
+    pullpolicy: "Always"
+  agentConfig:
+    service: "liqo-dashboard"
+    serviceAccount: "liqodash-admin-sa"
+    appLabel: "liqo-dashboard"
   enabled: true
-  service: "liqo-dashboard"
-  serviceAccount: "liqodash-admin-sa"
-  appLabel: "liqo-dashboard"
 
 crdReplicator_chart:
   image:

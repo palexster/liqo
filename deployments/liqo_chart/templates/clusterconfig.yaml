@@ -17,9 +17,9 @@ spec:
   agentConfig:
     dashboardConfig:
       namespace: {{ .Release.Namespace }}
-      service: {{ .Values.liqodash_chart.service }}
-      serviceAccount: {{ .Values.liqodash_chart.serviceAccount }}
-      appLabel: {{ .Values.liqodash_chart.appLabel }}
+      service: {{ .Values.liqodash_chart.agentConfig.service }}
+      serviceAccount: {{ .Values.liqodash_chart.agentConfig.serviceAccount }}
+      appLabel: {{ .Values.liqodash_chart.agentConfig.appLabel }}
   discoveryConfig:
     clusterName: {{ .Values.clusterName}}
     autojoin: true

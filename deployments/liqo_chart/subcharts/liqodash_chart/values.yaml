@@ -5,6 +5,10 @@
 image:
   repository: liqo/dashboard
   pullPolicy: Always
+agentConfig:
+  service: "liqo-dashboard"
+  serviceAccount: "liqodash-admin-sa"
+  appLabel: "liqo-dashboard"
   # Overrides the image tag whose default is the chart appVersion.
 
 suffix: ""
