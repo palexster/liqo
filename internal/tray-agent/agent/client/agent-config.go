@@ -4,6 +4,7 @@ import (
 	"errors"
 	clusterConfig "github.com/liqoTech/liqo/api/config/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
 )
 
 //agentConfiguration contains Agent config parameters.
@@ -35,7 +36,13 @@ func (ctrl *AgentController) acquireClusterConfiguration() {
 		return
 	}
 	aConf := ctrl.agentConf
-	clConf, err := ctrl.getConfig()
+	var clConf *clusterConfig.ClusterConfig
+	var err error
+	if ctrl.Mocked() {
+		clConf, err = createClusterConfig()
+	} else {
+		clConf, err = ctrl.getConfig()
+	}
 	if err != nil {
 		return
 	}
@@ -47,7 +54,6 @@ func (ctrl *AgentController) acquireClusterConfiguration() {
 		label:          agentConfig.DashboardConfig.AppLabel,
 	}
 	aConf.valid = true
-	return
 }
 
 //getConfig retrieves the ClusterConfig CR which contains configuration data.
@@ -64,6 +70,27 @@ func (ctrl *AgentController) getConfig() (*clusterConfig.ClusterConfig, error) {
 		return nil, errors.New("no ClusterConfig is present")
 	}
 	return &(confL.Items[0]), nil
+}
+
+//createClusterConfig creates a mocked ClusterConfig CR.
+func createClusterConfig() (*clusterConfig.ClusterConfig, error) {
+	confObj := &clusterConfig.ClusterConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "testConfig",
+			ResourceVersion: strconv.Itoa(1),
+		},
+		Spec: clusterConfig.ClusterConfigSpec{
+			AgentConfig: clusterConfig.AgentConfig{
+				DashboardConfig: clusterConfig.DashboardConfig{
+					Namespace:      "liqo",
+					Service:        "liqodashService",
+					ServiceAccount: "liqodashSA",
+					AppLabel:       "liqodash",
+				},
+			},
+		},
+	}
+	return confObj, nil
 }
 
 //ValidConfiguration returns whether AgentController configuration data

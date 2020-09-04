@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	advertisementApi "github.com/liqoTech/liqo/api/sharing/v1alpha1"
-	advertisement "github.com/liqoTech/liqo/internal/advertisement-operator"
 	"strings"
 )
 
@@ -31,7 +30,7 @@ func createAdvertisementController(kubeconfig string) (*CRDController, error) {
 //advertisementAddFunc is the ADD event handler for the Advertisement CRDController.
 func advertisementAddFunc(obj interface{}) {
 	newAdv := obj.(*advertisementApi.Advertisement)
-	if newAdv.Status.AdvertisementStatus == advertisement.AdvertisementAccepted {
+	if newAdv.Status.AdvertisementStatus == advertisementApi.AdvertisementAccepted {
 		agentCtrl.NotifyChannel(ChanAdvAccepted) <- newAdv.Name
 	} else {
 		agentCtrl.NotifyChannel(ChanAdvNew) <- newAdv.Name
@@ -42,9 +41,9 @@ func advertisementAddFunc(obj interface{}) {
 func advertisementUpdateFunc(oldObj interface{}, newObj interface{}) {
 	oldAdv := oldObj.(*advertisementApi.Advertisement)
 	newAdv := newObj.(*advertisementApi.Advertisement)
-	if oldAdv.Status.AdvertisementStatus != advertisement.AdvertisementAccepted && newAdv.Status.AdvertisementStatus == advertisement.AdvertisementAccepted {
+	if oldAdv.Status.AdvertisementStatus != advertisementApi.AdvertisementAccepted && newAdv.Status.AdvertisementStatus == advertisementApi.AdvertisementAccepted {
 		agentCtrl.NotifyChannel(ChanAdvAccepted) <- newAdv.Name
-	} else if oldAdv.Status.AdvertisementStatus == advertisement.AdvertisementAccepted && newAdv.Status.AdvertisementStatus != advertisement.AdvertisementAccepted {
+	} else if oldAdv.Status.AdvertisementStatus == advertisementApi.AdvertisementAccepted && newAdv.Status.AdvertisementStatus != advertisementApi.AdvertisementAccepted {
 		agentCtrl.NotifyChannel(ChanAdvRevoked) <- newAdv.Name
 	}
 }
