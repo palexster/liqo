@@ -4,10 +4,12 @@ import (
 	"context"
 	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
 	"github.com/liqotech/liqo/pkg/virtualKubelet/options"
+	"errors"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"strings"
 )
@@ -16,7 +18,7 @@ type EndpointSlicesReflector struct {
 	ri.APIReflector
 
 	localRemappedPodCIDR options.ReadOnlyOption
-	nodeName             options.ReadOnlyOption
+	nodeName options.ReadOnlyOption
 }
 
 func (r *EndpointSlicesReflector) SetSpecializedPreProcessingHandlers() {
@@ -94,7 +96,7 @@ func (r *EndpointSlicesReflector) PreAdd(obj interface{}) interface{} {
 			OwnerReferences: svcOwnerRef,
 		},
 		AddressType: discoveryv1beta1.AddressTypeIPv4,
-		Endpoints:   filterEndpoints(epLocal),
+		Endpoints:   filterEndpoints(epLocal,r.localRemappedPodCIDR,r.nodeName),
 		Ports:       epLocal.Ports,
 	}
 
@@ -102,7 +104,7 @@ func (r *EndpointSlicesReflector) PreAdd(obj interface{}) interface{} {
 }
 
 func (r *EndpointSlicesReflector) PreUpdate(newObj, _ interface{}) interface{} {
-	endpointSliceLocal := newObj.(discoveryv1beta1.EndpointSlice)
+	endpointSliceLocal := newObj.(*discoveryv1beta1.EndpointSlice).DeepCopy()
 
 	nattedNs, err := r.NattingTable().NatNamespace(endpointSliceLocal.Namespace, false)
 	if err != nil {
@@ -134,12 +136,11 @@ func (r *EndpointSlicesReflector) PreDelete(obj interface{}) interface{} {
 	return endpointSliceLocal
 }
 
-func filterEndpoints(slice *discoveryv1beta1.EndpointSlice) []discoveryv1beta1.Endpoint {
+func filterEndpoints(slice *discoveryv1beta1.EndpointSlice, podCidr string, nodeName string) []discoveryv1beta1.Endpoint {
 	var epList []discoveryv1beta1.Endpoint
 	// Two possibilities: (1) exclude all virtual nodes (2)
-	myVirtualNode := "liqo-6575d0b9-6fba-4f7d-b890-a6417009cb64"
 	for _, v := range slice.Endpoints {
-		if v.Topology["kubernetes.io/hostname:"] != myVirtualNode {
+		if v.Topology["kubernetes.io/hostname:"] != nodeName {
 			v := discoveryv1beta1.Endpoint{
 				Addresses:  ChangePodIp("10.0.0.0/16", v.Addresses[0]),
 				Conditions: v.Conditions,
@@ -180,9 +181,17 @@ func (r *EndpointSlicesReflector) CleanupNamespace(localNamespace string) {
 	}
 }
 
-func ChangePodIp(cidr string, ip string) []string {
-	// call to Nat API
-	return []string{
-		ip,
+func addEndpointSlicesIndexers() cache.Indexers {
+	i := cache.Indexers{}
+	i["EndpointSlice"] = func(obj interface{}) ([]string, error) {
+		endpointSlice, ok := obj.(*discoveryv1beta1.EndpointSlice)
+		if !ok {
+			return []string{}, errors.New("cannot convert obj to configmap")
+		}
+		return []string{
+			strings.Join([]string{endpointSlice.Namespace, endpointSlice.Name}, "/"),
+		}, nil
 	}
+	return i
 }
+

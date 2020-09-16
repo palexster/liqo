@@ -6,6 +6,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
+type ReflectionType int
+
+const (
+	OutgoingReflection ReflectionType = iota
+	IncomingReflection
+)
 
 type ReflectionType int
 

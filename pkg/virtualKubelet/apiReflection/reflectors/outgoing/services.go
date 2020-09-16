@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
+	apimgmt "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,15 +89,80 @@ func (r *ServicesReflector) CleanupNamespace(localNamespace string) {
 }
 
 func (r *ServicesReflector) PreAdd(obj interface{}) interface{} {
-	return obj
+	svcLocal := obj.(*corev1.Service)
+	klog.V(3).Infof("PreAdd routine started for service %v/%v", svcLocal.Namespace, svcLocal.Name)
+
+	nattedNs, err :=  r.NattingTable().NatNamespace(svcLocal.Namespace, false)
+	if err != nil {
+		klog.Error(err)
+		return nil
+	}
+
+	svcRemote := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      svcLocal.Name,
+			Namespace: nattedNs,
+			Labels:    make(map[string]string),
+		},
+		Spec: corev1.ServiceSpec{
+			Ports:                    svcLocal.Spec.Ports,
+			Selector:                 svcLocal.Spec.Selector,
+			Type:                     svcLocal.Spec.Type,
+		},
+	}
+	for k, v := range svcLocal.Labels {
+		svcRemote.Labels[k] = v
+	}
+	svcRemote.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
+
+	klog.V(3).Infof("PreAdd routine completed for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+	return svcRemote
 }
 
 func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interface{} {
-	return newObj
+	newSvc := newObj.(*corev1.ConfigMap).DeepCopy()
+
+	nattedNs, err := r.NattingTable().NatNamespace(newSvc.Namespace, false)
+	if err != nil {
+		klog.Error(err)
+		return nil
+	}
+
+
+	name := r.KeyerFromObj(newObj, nattedNs)
+	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(name)
+	if err != nil {
+		klog.Error(err)
+		return nil
+	}
+	if !exists {
+		oldRemoteObj, err = r.GetForeignClient().CoreV1().ConfigMaps(nattedNs).Get(context.TODO(), newSvc.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return nil
+		}
+	}
+	oldRemoteSvc := oldRemoteObj.(*corev1.Service)
+
+	newSvc.SetNamespace(nattedNs)
+	newSvc.SetResourceVersion(oldRemoteSvc.ResourceVersion)
+	newSvc.SetUID(oldRemoteSvc.UID)
+	return newSvc
 }
 
 func (r *ServicesReflector) PreDelete(obj interface{}) interface{} {
-	return obj
+	svcLocal := obj.(*corev1.Service)
+	klog.V(3).Infof("PreDelete routine started for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+
+	nattedNs, err := r.NattingTable().NatNamespace(svcLocal.Namespace, false)
+	if err != nil {
+		klog.Error(err)
+		return nil
+	}
+	svcLocal.Namespace = nattedNs
+
+	klog.V(3).Infof("PreDelete routine completed for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+	return svcLocal
 }
 
 func addServicesIndexers() cache.Indexers {

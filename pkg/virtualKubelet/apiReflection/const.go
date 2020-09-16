@@ -5,6 +5,7 @@ const (
 	EndpointSlices
 	Pods
 	Services
+	Secrets
 )
 
 type ApiType int
