@@ -4,7 +4,6 @@ import (
 	apimgmt "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection"
 	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
 	"github.com/liqotech/liqo/pkg/virtualKubelet/options"
-	"github.com/liqotech/liqo/pkg/virtualKubelet/options/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 )
@@ -13,11 +12,12 @@ var ApiMapping = map[apimgmt.ApiType]func(reflector ri.APIReflector, opts map[op
 	apimgmt.Configmaps: func(reflector ri.APIReflector, opts map[options.OptionKey]options.Option) ri.OutgoingAPIReflector {
 		return &ConfigmapsReflector{APIReflector: reflector}
 	},
+	/*
 	apimgmt.EndpointSlices: func(reflector ri.APIReflector, opts map[options.OptionKey]options.Option) ri.OutgoingAPIReflector {
 		return &EndpointSlicesReflector{
 			APIReflector: reflector,
 			localRemappedPodCIDR: opts[types.LocalRemappedPodCIDR]}
-	},
+	},*/
 	apimgmt.Services: func(reflector ri.APIReflector, opts map[options.OptionKey]options.Option) ri.OutgoingAPIReflector {
 		return &ServicesReflector{APIReflector: reflector}
 	},
@@ -30,9 +30,11 @@ var HomeInformerBuilders = map[apimgmt.ApiType]func(informers.SharedInformerFact
 	apimgmt.Configmaps: func(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
 		return factory.Core().V1().ConfigMaps().Informer()
 	},
+	/*
 	apimgmt.EndpointSlices: func(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
 		return factory.Discovery().V1beta1().EndpointSlices().Informer()
 	},
+	 */
 	apimgmt.Secrets: func(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
 		return factory.Core().V1().Secrets().Informer()
 	},

@@ -138,7 +138,7 @@ func (c *OutgoingReflectorsController) startNamespaceReflection(namespace string
 		c.foreignWaitGroup.Done()
 	}()
 
-	klog.V(2).Infof("reflection for namespace %v started", namespace)
+	klog.V(2).Infof("Outgoing reflection for namespace %v started", namespace)
 }
 
 func (c *OutgoingReflectorsController) stopNamespaceReflection(namespace string) {

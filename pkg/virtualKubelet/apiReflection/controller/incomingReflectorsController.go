@@ -137,6 +137,8 @@ func (c *IncomingReflectorsController) startNamespaceReflection(namespace string
 		delete(c.foreignInformerFactories, nattedNs)
 		c.foreignWaitGroup.Done()
 	}()
+
+	klog.V(2).Infof("Incoming reflection for namespace %v started", namespace)
 }
 
 func (c *IncomingReflectorsController) SetInforming(api apimgmt.ApiType, handler func(interface{})) {

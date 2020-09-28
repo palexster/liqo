@@ -19,6 +19,7 @@ type GenericAPIReflector struct {
 	informingFunc         func(obj interface{})
 
 	ForeignClient    kubernetes.Interface
+
 	LocalInformers   map[string]cache.SharedIndexInformer
 	ForeignInformers map[string]cache.SharedIndexInformer
 	NamespaceNatting namespacesMapping.NamespaceNatter

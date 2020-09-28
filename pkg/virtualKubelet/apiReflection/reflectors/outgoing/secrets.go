@@ -20,6 +20,7 @@ type SecretsReflector struct {
 
 func (r *SecretsReflector) SetSpecializedPreProcessingHandlers() {
 	r.SetPreProcessingHandlers(ri.PreProcessingHandlers{
+		IsAllowed:  r.isAllowed,
 		AddFunc:    r.PreAdd,
 		UpdateFunc: r.PreUpdate,
 		DeleteFunc: r.PreDelete})
@@ -89,7 +90,7 @@ func (r *SecretsReflector) CleanupNamespace(localNamespace string) {
 }
 
 func (r *SecretsReflector) PreAdd(obj interface{}) interface{} {
-	secretLocal := obj.(*corev1.Secret)
+	secretLocal := obj.(*corev1.Secret).DeepCopy()
 	klog.V(3).Infof("PreAdd routine started for Secret %v/%v", secretLocal.Namespace, secretLocal.Name)
 
 	nattedNs, err := r.NattingTable().NatNamespace(secretLocal.Namespace, false)
@@ -103,17 +104,22 @@ func (r *SecretsReflector) PreAdd(obj interface{}) interface{} {
 			Name:      secretLocal.Name,
 			Namespace: nattedNs,
 			Labels:    make(map[string]string),
+			Annotations: make(map[string]string),
 		},
 		Data:       secretLocal.Data,
 		StringData: secretLocal.StringData,
 		Type:       secretLocal.Type,
+	}
+
+	for k, v := range secretLocal.Annotations {
+		secretRemote.Annotations[k] = v
 	}
 	for k, v := range secretLocal.Labels {
 		secretRemote.Labels[k] = v
 	}
 	secretRemote.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
 
-	klog.V(3).Infof("PreAdd routine completed for configmap %v/%v", secretLocal.Namespace, secretLocal.Name)
+	klog.V(3).Infof("PreAdd routine completed for secret %v/%v", secretLocal.Namespace, secretLocal.Name)
 	return secretRemote
 }
 
@@ -126,7 +132,6 @@ func (r *SecretsReflector) PreUpdate(newObj interface{}, _ interface{}) interfac
 		return nil
 	}
 
-
 	name := r.KeyerFromObj(newObj, nattedNs)
 	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(name)
 	if err != nil {
@@ -136,21 +141,47 @@ func (r *SecretsReflector) PreUpdate(newObj interface{}, _ interface{}) interfac
 	if !exists {
 		err = r.ForeignInformer(nattedNs).GetStore().Resync()
 		if err != nil {
-			klog.Error(err)
+			klog.Errorf("error while resyncing secrets foreign cache - ERR: %v", err)
+			return nil
+		}
+		oldRemoteObj, exists, err = r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
+		if err != nil {
+			klog.Errorf("error while retrieving secret from foreign cache - ERR: %v", err)
+			return nil
+		}
+		if !exists {
+			klog.V(3).Infof("secret %v/%v not found after cache resync", nattedNs, name)
 			return nil
 		}
 	}
-	oldRemoteSvc := oldRemoteObj.(*corev1.Secret)
+	oldRemoteSec := oldRemoteObj.(*corev1.Secret)
 
 	newSecret.SetNamespace(nattedNs)
-	newSecret.SetResourceVersion(oldRemoteSvc.ResourceVersion)
-	newSecret.SetUID(oldRemoteSvc.UID)
+	newSecret.SetResourceVersion(oldRemoteSec.ResourceVersion)
+	newSecret.SetUID(oldRemoteSec.UID)
+
+	if newSecret.Labels == nil {
+		newSecret.Labels = make(map[string]string)
+	}
+	for k, v := range oldRemoteSec.Labels {
+		newSecret.Labels[k] = v
+	}
+	newSecret.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
+
+	if newSecret.Annotations == nil {
+		newSecret.Annotations = make(map[string]string)
+	}
+	for k, v := range oldRemoteSec.Annotations {
+		newSecret.Annotations[k] = v
+	}
+
 	return newSecret
 }
 
 func (r *SecretsReflector) PreDelete(obj interface{}) interface{} {
-	serviceLocal := obj.(*corev1.Secret)
-	klog.V(3).Infof("PreDelete routine started for configmap %v/%v", serviceLocal.Namespace, serviceLocal.Name)
+	serviceLocal := obj.(*corev1.Secret).DeepCopy()
+
+	klog.V(3).Infof("PreDelete routine started for secret %v/%v", serviceLocal.Namespace, serviceLocal.Name)
 
 	nattedNs, err := r.NattingTable().NatNamespace(serviceLocal.Namespace, false)
 	if err != nil {
@@ -159,8 +190,20 @@ func (r *SecretsReflector) PreDelete(obj interface{}) interface{} {
 	}
 	serviceLocal.Namespace = nattedNs
 
-	klog.V(3).Infof("PreDelete routine completed for configmap %v/%v", serviceLocal.Namespace, serviceLocal.Name)
+	klog.V(3).Infof("PreDelete routine completed for secret %v/%v", serviceLocal.Namespace, serviceLocal.Name)
 	return serviceLocal
+}
+
+func (r *SecretsReflector) isAllowed(obj interface{}) bool {
+	sec, ok := obj.(*corev1.Secret)
+	if !ok {
+		klog.Error("cannot convert obj to secret")
+		return false
+	}
+	if sec.Type == corev1.SecretTypeServiceAccountToken {
+		return false
+	}
+	return true
 }
 
 func addSecretsIndexers() cache.Indexers {

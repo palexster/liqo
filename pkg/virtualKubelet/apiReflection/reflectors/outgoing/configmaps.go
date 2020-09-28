@@ -81,6 +81,7 @@ func (r *ConfigmapsReflector) PreAdd(obj interface{}) interface{} {
 			Name:      cmLocal.Name,
 			Namespace: nattedNs,
 			Labels:    make(map[string]string),
+			Annotations: make(map[string]string),
 		},
 		Data:       cmLocal.Data,
 		BinaryData: cmLocal.BinaryData,
@@ -140,12 +141,19 @@ func (r *ConfigmapsReflector) PreUpdate(newObj, _ interface{}) interface{} {
 	}
 	newCm.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
 
+	if newCm.Annotations == nil {
+		newCm.Annotations = make(map[string]string)
+	}
+	for k, v := range oldRemoteCm.Annotations {
+		newCm.Annotations[k] = v
+	}
+
 	klog.V(3).Infof("PreUpdate routine completed for configmap %v/%v", newCm.Namespace, newCm.Name)
 	return newCm
 }
 
 func (r *ConfigmapsReflector) PreDelete(obj interface{}) interface{} {
-	cmLocal := obj.(*corev1.ConfigMap)
+	cmLocal := obj.(*corev1.ConfigMap).DeepCopy()
 	klog.V(3).Infof("PreDelete routine started for configmap %v/%v", cmLocal.Namespace, cmLocal.Name)
 
 	nattedNs, err := r.NattingTable().NatNamespace(cmLocal.Namespace, false)

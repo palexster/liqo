@@ -135,8 +135,8 @@ func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interfa
 		return nil
 	}
 
-	name := r.KeyerFromObj(newObj, nattedNs)
-	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
+	key := r.Keyer(nattedNs, newSvc.Name)
+	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(key)
 	if err != nil {
 		klog.Error(err)
 		return nil
@@ -147,13 +147,13 @@ func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interfa
 			klog.Errorf("error while resyncing services foreign cache - ERR: %v", err)
 			return nil
 		}
-		oldRemoteObj, exists, err = r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
+		oldRemoteObj, exists, err = r.ForeignInformer(nattedNs).GetStore().GetByKey(key)
 		if err != nil {
 			klog.Errorf("error while retrieving service from foreign cache - ERR: %v", err)
 			return nil
 		}
 		if !exists {
-			klog.V(3).Infof("service %v/%v not found after cache resync", nattedNs, name)
+			klog.V(3).Infof("service %v not found after cache resync", key)
 			return nil
 		}
 	}
@@ -162,11 +162,27 @@ func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interfa
 	newSvc.SetNamespace(nattedNs)
 	newSvc.SetResourceVersion(oldRemoteSvc.ResourceVersion)
 	newSvc.SetUID(oldRemoteSvc.UID)
+
+	if newSvc.Labels == nil {
+		newSvc.Labels = make(map[string]string)
+	}
+	for k, v := range oldRemoteSvc.Labels {
+		newSvc.Labels[k] = v
+	}
+	newSvc.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
+
+	if newSvc.Annotations == nil {
+		newSvc.Annotations = make(map[string]string)
+	}
+	for k, v := range oldRemoteSvc.Annotations {
+		newSvc.Annotations[k] = v
+	}
+
 	return newSvc
 }
 
 func (r *ServicesReflector) PreDelete(obj interface{}) interface{} {
-	svcLocal := obj.(*corev1.Service)
+	svcLocal := obj.(*corev1.Service).DeepCopy()
 	klog.V(3).Infof("PreDelete routine started for service %v/%v", svcLocal.Namespace, svcLocal.Name)
 
 	nattedNs, err := r.NattingTable().NatNamespace(svcLocal.Namespace, false)
@@ -189,10 +205,10 @@ func (r *ServicesReflector) isAllowed(obj interface{}) bool {
 
 	_, ok = blacklist[apimgmt.Services][r.Keyer(svc.Namespace, svc.Name)]
 	if ok {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
 
 func addServicesIndexers() cache.Indexers {
