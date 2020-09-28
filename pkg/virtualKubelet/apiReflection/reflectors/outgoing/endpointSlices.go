@@ -2,9 +2,10 @@ package outgoing
 
 import (
 	"context"
+	"errors"
 	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
 	"github.com/liqotech/liqo/pkg/virtualKubelet/options"
-	"errors"
+	"github.com/liqotech/liqo/pkg/virtualKubelet/translation"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,7 +97,7 @@ func (r *EndpointSlicesReflector) PreAdd(obj interface{}) interface{} {
 			OwnerReferences: svcOwnerRef,
 		},
 		AddressType: discoveryv1beta1.AddressTypeIPv4,
-		Endpoints:   filterEndpoints(epLocal,r.localRemappedPodCIDR,r.nodeName),
+		Endpoints:   filterEndpoints(epLocal, r.localRemappedPodCIDR.Value().ToString(), r.nodeName.Value().ToString()),
 		Ports:       epLocal.Ports,
 	}
 
@@ -141,8 +142,9 @@ func filterEndpoints(slice *discoveryv1beta1.EndpointSlice, podCidr string, node
 	// Two possibilities: (1) exclude all virtual nodes (2)
 	for _, v := range slice.Endpoints {
 		if v.Topology["kubernetes.io/hostname:"] != nodeName {
+			addresses := []string{translation.ChangePodIp(podCidr, v.Addresses[0])}
 			v := discoveryv1beta1.Endpoint{
-				Addresses:  ChangePodIp("10.0.0.0/16", v.Addresses[0]),
+				Addresses: addresses,
 				Conditions: v.Conditions,
 				Hostname:   nil,
 				TargetRef:  nil,

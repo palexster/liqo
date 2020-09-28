@@ -85,17 +85,28 @@ func (c *OutgoingReflectorsController) startNamespaceReflection(namespace string
 	c.homeInformerFactories[namespace] = homeFactory
 	c.foreignInformerFactories[nattedNs] = foreignFactory
 
-	for api, handler := range outgoing.InformerBuilders {
+	for api, handler := range outgoing.HomeInformerBuilders {
 		homeInformer := handler(homeFactory)
-		foreignInformer := handler(foreignFactory)
+		var  foreignInformer cache.SharedIndexInformer
 
-		homeIndexer := outgoing.Indexers[api]
+		foreignHandler, ok := outgoing.ForeignInformerBuilders[api]
+		if ok {
+			foreignInformer = foreignHandler(foreignFactory)
+		} else {
+			foreignInformer = handler(foreignFactory)
+		}
+
+		homeIndexer := outgoing.HomeIndexers[api]
+		foreignIndexer, ok := outgoing.ForeignIndexers[api]
+		if !ok {
+			foreignIndexer = homeIndexer
+		}
+
 		if homeIndexer != nil {
 			if err := homeInformer.AddIndexers(homeIndexer()); err != nil {
 				klog.Errorf("Error while setting up home informer - ERR: %v", err)
 			}
 		}
-		foreignIndexer := outgoing.Indexers[api]
 		if foreignIndexer != nil {
 			if err := foreignInformer.AddIndexers(foreignIndexer()); err != nil {
 				klog.Errorf("Error while setting up foreign informer - ERR: %v", err)

@@ -2,6 +2,7 @@ package apiReflection
 
 const (
 	Configmaps = iota
+	Endpoints
 	EndpointSlices
 	Pods
 	Services

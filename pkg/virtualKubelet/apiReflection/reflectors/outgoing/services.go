@@ -3,8 +3,8 @@ package outgoing
 import (
 	"context"
 	"errors"
-	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
 	apimgmt "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection"
+	ri "github.com/liqotech/liqo/pkg/virtualKubelet/apiReflection/reflectors/reflectorsInterfaces"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +20,7 @@ type ServicesReflector struct {
 
 func (r *ServicesReflector) SetSpecializedPreProcessingHandlers() {
 	r.SetPreProcessingHandlers(ri.PreProcessingHandlers{
+		IsAllowed:  r.isAllowed,
 		AddFunc:    r.PreAdd,
 		UpdateFunc: r.PreUpdate,
 		DeleteFunc: r.PreDelete})
@@ -79,9 +80,15 @@ func (r *ServicesReflector) CleanupNamespace(localNamespace string) {
 		return
 	}
 
+	err = r.ForeignInformer(foreignNamespace).GetStore().Resync()
+	if err != nil {
+		klog.Errorf("error while resyncing services foreign cache - ERR: %v", err)
+		return
+	}
+
 	objects := r.ForeignInformer(foreignNamespace).GetStore().List()
 	for _, obj := range objects {
-		cm := obj.(*corev1.ConfigMap)
+		cm := obj.(*corev1.Service)
 		if err := r.GetForeignClient().CoreV1().Services(foreignNamespace).Delete(context.TODO(), cm.Name, metav1.DeleteOptions{}); err != nil {
 			klog.Errorf("error while deleting service %v/%v - ERR: %v", cm.Name, cm.Namespace, err)
 		}
@@ -115,12 +122,12 @@ func (r *ServicesReflector) PreAdd(obj interface{}) interface{} {
 	}
 	svcRemote.Labels[apimgmt.LiqoLabelKey] = apimgmt.LiqoLabelValue
 
-	klog.V(3).Infof("PreAdd routine completed for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+	klog.V(3).Infof("PreAdd routine completed for service %v/%v", svcLocal.Namespace, svcLocal.Name)
 	return svcRemote
 }
 
 func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interface{} {
-	newSvc := newObj.(*corev1.ConfigMap).DeepCopy()
+	newSvc := newObj.(*corev1.Service).DeepCopy()
 
 	nattedNs, err := r.NattingTable().NatNamespace(newSvc.Namespace, false)
 	if err != nil {
@@ -128,17 +135,25 @@ func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interfa
 		return nil
 	}
 
-
 	name := r.KeyerFromObj(newObj, nattedNs)
-	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(name)
+	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
 	if err != nil {
 		klog.Error(err)
 		return nil
 	}
 	if !exists {
-		oldRemoteObj, err = r.GetForeignClient().CoreV1().ConfigMaps(nattedNs).Get(context.TODO(), newSvc.Name, metav1.GetOptions{})
+		err = r.ForeignInformer(nattedNs).GetStore().Resync()
 		if err != nil {
-			klog.Error(err)
+			klog.Errorf("error while resyncing services foreign cache - ERR: %v", err)
+			return nil
+		}
+		oldRemoteObj, exists, err = r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
+		if err != nil {
+			klog.Errorf("error while retrieving service from foreign cache - ERR: %v", err)
+			return nil
+		}
+		if !exists {
+			klog.V(3).Infof("service %v/%v not found after cache resync", nattedNs, name)
 			return nil
 		}
 	}
@@ -152,7 +167,7 @@ func (r *ServicesReflector) PreUpdate(newObj interface{}, _ interface{}) interfa
 
 func (r *ServicesReflector) PreDelete(obj interface{}) interface{} {
 	svcLocal := obj.(*corev1.Service)
-	klog.V(3).Infof("PreDelete routine started for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+	klog.V(3).Infof("PreDelete routine started for service %v/%v", svcLocal.Namespace, svcLocal.Name)
 
 	nattedNs, err := r.NattingTable().NatNamespace(svcLocal.Namespace, false)
 	if err != nil {
@@ -161,8 +176,23 @@ func (r *ServicesReflector) PreDelete(obj interface{}) interface{} {
 	}
 	svcLocal.Namespace = nattedNs
 
-	klog.V(3).Infof("PreDelete routine completed for configmap %v/%v", svcLocal.Namespace, svcLocal.Name)
+	klog.V(3).Infof("PreDelete routine completed for service %v/%v", svcLocal.Namespace, svcLocal.Name)
 	return svcLocal
+}
+
+func (r *ServicesReflector) isAllowed(obj interface{}) bool {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		klog.Error("cannot convert obj to service")
+		return false
+	}
+
+	_, ok = blacklist[apimgmt.Services][r.Keyer(svc.Namespace, svc.Name)]
+	if ok {
+		return true
+	}
+
+	return false
 }
 
 func addServicesIndexers() cache.Indexers {
@@ -170,7 +200,7 @@ func addServicesIndexers() cache.Indexers {
 	i["services"] = func(obj interface{}) ([]string, error) {
 		svc, ok := obj.(*corev1.Service)
 		if !ok {
-			return []string{}, errors.New("cannot convert obj to configmap")
+			return []string{}, errors.New("cannot convert obj to service")
 		}
 		return []string{
 			strings.Join([]string{svc.Namespace, svc.Name}, "/"),

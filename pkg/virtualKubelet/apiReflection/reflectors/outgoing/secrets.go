@@ -165,10 +165,10 @@ func (r *SecretsReflector) PreDelete(obj interface{}) interface{} {
 
 func addSecretsIndexers() cache.Indexers {
 	i := cache.Indexers{}
-	i["Secrets"] = func(obj interface{}) ([]string, error) {
+	i["secrets"] = func(obj interface{}) ([]string, error) {
 		secret, ok := obj.(*corev1.Secret)
 		if !ok {
-			return []string{}, errors.New("cannot convert obj to configmap")
+			return []string{}, errors.New("cannot convert obj to secret")
 		}
 		return []string{
 			strings.Join([]string{secret.Namespace, secret.Name}, "/"),

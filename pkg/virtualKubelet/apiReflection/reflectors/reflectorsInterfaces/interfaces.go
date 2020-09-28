@@ -6,12 +6,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
-type ReflectionType int
-
-const (
-	OutgoingReflection ReflectionType = iota
-	IncomingReflection
-)
 
 type ReflectionType int
 
@@ -21,6 +15,7 @@ const (
 )
 
 type APIPreProcessing interface {
+	PreProcessIsAllowed(obj interface{}) bool
 	PreProcessAdd(obj interface{}) interface{}
 	PreProcessUpdate(newObj, oldObj interface{}) interface{}
 	PreProcessDelete(obj interface{}) interface{}
@@ -62,6 +57,7 @@ type IncomingAPIReflector interface {
 }
 
 type PreProcessingHandlers struct {
+	IsAllowed  func(obj interface{}) bool
 	AddFunc    func(obj interface{}) interface{}
 	UpdateFunc func(newObj, oldObj interface{}) interface{}
 	DeleteFunc func(obj interface{}) interface{}

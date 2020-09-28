@@ -106,7 +106,7 @@ func (r *ConfigmapsReflector) PreUpdate(newObj, _ interface{}) interface{} {
 	}
 
 	name := r.KeyerFromObj(newObj, nattedNs)
-	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(name)
+	oldRemoteObj, exists, err := r.ForeignInformer(nattedNs).GetStore().GetByKey(r.Keyer(nattedNs, name))
 	if err != nil {
 		klog.Error(err)
 		return nil
