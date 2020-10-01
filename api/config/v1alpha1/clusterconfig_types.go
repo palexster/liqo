@@ -145,6 +145,8 @@ type DashboardConfig struct {
 	Service string `json:"service"`
 	// ServiceAccount is the LiqoDash serviceAccount name.
 	ServiceAccount string `json:"serviceAccount"`
+	// Ingress is the LiqoDash ingress name.
+	Ingress string `json:"ingress"`
 	// AppLabel defines the value of the 'app' label. All LiqoDash
 	// related resources are labelled with it.
 	AppLabel string `json:"appLabel"`

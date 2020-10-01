@@ -91,6 +91,7 @@ liqodash_chart:
   agentConfig:
     service: "liqo-dashboard"
     serviceAccount: "liqodash-admin-sa"
+    ingress: "liqo-dashboard-ingress"
     appLabel: "liqo-dashboard"
   enabled: true
 

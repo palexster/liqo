@@ -126,7 +126,7 @@ kind: Ingress
 metadata:
   labels:
     app: liqo-dashboard
-  name: liqo-dashboard-ingress
+  name: {{ .Values.agentConfig.ingress }}
   namespace: {{ .Release.Namespace }}
 spec:
   rules:

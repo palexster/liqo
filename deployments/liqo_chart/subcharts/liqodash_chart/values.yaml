@@ -8,6 +8,7 @@ image:
 agentConfig:
   service: "liqo-dashboard"
   serviceAccount: "liqodash-admin-sa"
+  ingress: "liqo-dashboard-ingress"
   appLabel: "liqo-dashboard"
   # Overrides the image tag whose default is the chart appVersion.
 

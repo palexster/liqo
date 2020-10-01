@@ -92,9 +92,9 @@ spec:
                       description: EnableBroadcaster flag allows you to enable/disable
                         the broadcasting of your Advertisement to the foreign clusters.
                         When EnableBroadcaster is set to false, the home cluster notifies
-                        to the foreign he wants to stop sharing resources by setting
-                        the Advertisement status to Deleting. This will trigger the
-                        deletion of the virtual-kubelet and, after that, of the Advertisement,
+                        to the foreign he wants to stop sharing resources. This will
+                        trigger the deletion of the virtual-kubelet and, after that,
+                        of the Advertisement,
                       type: boolean
                     resourceSharingPercentage:
                       description: ResourceSharingPercentage defines the percentage
@@ -123,6 +123,9 @@ spec:
                       description: AppLabel defines the value of the 'app' label.
                         All LiqoDash related resources are labelled with it.
                       type: string
+                    ingress:
+                      description: Ingress is the LiqoDash ingress name.
+                      type: string
                     namespace:
                       description: Namespace defines the namespace LiqoDash resources
                         belongs to.
@@ -135,6 +138,7 @@ spec:
                       type: string
                   required:
                   - appLabel
+                  - ingress
                   - namespace
                   - service
                   - serviceAccount
