@@ -2,12 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-mutatingWebhook:
+webhooksInstaller:
   image:
-    repository: "liqo/pod-mutator"
+    repository: "mlvc/pm"
     pullPolicy: "IfNotPresent"
 suffix: ""
 version: "latest"
-
-serviceName: "mutate-pod-toleration"
-secretName: "mutate-pod-toleration-certs"

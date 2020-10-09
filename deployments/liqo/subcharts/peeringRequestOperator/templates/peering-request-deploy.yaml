@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: peering-request-operator
+  name: {{ .Values.global.peeringRequestOperatorServiceName }}
   namespace: {{ .Release.Namespace }}
   labels:
     k8s-app: peering-request-operator
@@ -11,7 +11,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: peering-request-operator
+  name: {{ .Values.global.peeringRequestOperatorServiceName }}
   namespace: {{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
@@ -27,18 +27,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    run: peering-request-operator
+    run: {{ .Values.global.peeringRequestOperatorServiceName }}
   name: peering-request-operator
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      run: peering-request-operator
+      run: {{ .Values.global.peeringRequestOperatorServiceName }}
   template:
     metadata:
       labels:
-        run: peering-request-operator
+        run: {{ .Values.global.peeringRequestOperatorServiceName }}
     spec:
       serviceAccountName: peering-request-operator
       initContainers:
@@ -123,14 +123,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: peering-request-operator
+  name: {{ .Values.global.peeringRequestOperatorServiceName }}
   namespace: {{ .Release.Namespace }}
   labels:
-    run: peering-request-operator
+    run: {{ .Values.global.peeringRequestOperatorServiceName }}
 spec:
   type: ClusterIP
   selector:
-    run: peering-request-operator
+    run: {{ .Values.global.peeringRequestOperatorServiceName }}
   ports:
     - protocol: TCP
       port: 8443

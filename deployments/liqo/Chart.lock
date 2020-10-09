@@ -14,6 +14,9 @@ dependencies:
 - name: podMutator
   repository: file://subcharts/podMutator/
   version: 0.1.0
+- name: webhooksInstaller
+  repository: file://subcharts/webhooksInstaller/
+  version: 0.1.0
 - name: discoveryOperator
   repository: file://subcharts/discoveryOperator/
   version: 0.1.0
@@ -26,5 +29,5 @@ dependencies:
 - name: crdReplicator
   repository: file://subcharts/crdReplicator/
   version: 0.1.0
-digest: sha256:1d2daeb4e2683328ed05687c095ad4ea7956fa2040c281bd327e1351b6df357e
-generated: "2020-10-02T08:16:19.280293895+02:00"
+digest: sha256:99f529087d74a0dd7007e129a052d1599c0865dc0312b4f745c8cfc31c26f84f
+generated: "2020-10-12T17:14:31.485481817+02:00"

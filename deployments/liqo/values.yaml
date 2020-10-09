@@ -44,16 +44,17 @@ schedulingNodeOperator:
     pullPolicy: "IfNotPresent"
   enabled: true
 
+webhooksInstaller:
+  image:
+    repository: "mlvc/pm"
+    pullPolicy: "IfNotPresent"
+  enabled: true
+
 #configuration values for the mutatingWebhook subchart
-podMutator:
-  init-mutatingWebhook:
-    image:
-      repository: "liqo/init-pod-mutator"
-      pullPolicy: "IfNotPresent"
-  mutatingWebhook:
-    image:
-      repository: "liqo/pod-mutator"
-      pullPolicy: "IfNotPresent"
+mutatingWebhook:
+  image:
+    repository: "liqo/pod-mutator"
+    pullPolicy: "IfNotPresent"
   enabled: true
 
 discoveryOperator:
@@ -65,18 +66,11 @@ discoveryOperator:
   enabled: true
 
 peeringRequestOperator:
-  operator:
-    image:
-      repository: "liqo/peering-request-operator"
-      pullPolicy: "IfNotPresent"
-  secretCreation:
-    image:
-      repository: "liqo/secret-creation"
-      pullPolicy: "IfNotPresent"
-  deployment:
-    image:
-      repository: "liqo/peering-request-webhook-init"
-      pullPolicy: "IfNotPresent"
+  image:
+    repository: "liqo/peering-request-operator"
+    pullPolicy: "IfNotPresent"
+  serviceName: peering-request-operator
+  secretName: peering-request-webhook-certs
   enabled: true
 
 liqodash:
@@ -95,5 +89,9 @@ global:
   configmapName: "liqo-configmap"
   dashboard_ingress: ""
   dashboard_version: ""
+  podMutatorServiceName: pod-mutator
+  podMutatorSecretName: pod-mutator-certs
+  peeringRequestOperatorServiceName: peering-request-operator
+  peeringRequestOperatorSecretName: peering-request-operator-certs
   suffix: ""
   version: ""

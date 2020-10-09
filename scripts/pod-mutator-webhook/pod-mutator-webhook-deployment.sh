@@ -34,34 +34,7 @@ CACRT=$(< /var/run/secrets/kubernetes.io/serviceaccount/ca.crt base64 | sed ':a;
 
 # shellcheck disable=SC2154
 cat <<EOF | kubectl apply -f -
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: mutatepodtoleration
-  namespace: $liqonamespace
-  labels:
-    app: mutatepodtoleration
-webhooks:
-  - name: mutatepodtoleration.$liqonamespace.$liqoservice
-    clientConfig:
-      caBundle: $CACRT
-      service:
-        name: $liqoservice
-        namespace: $liqonamespace
-        path: "/mutate"
-        port: 443
-    rules:
-      - operations: ["CREATE"]
-        apiGroups: [""]
-        apiVersions: ["v1"]
-        resources: ["pods"]
-    sideEffects: None
-    timeoutSeconds: 5
-    reinvocationPolicy: Never
-    failurePolicy: Ignore
-    namespaceSelector:
-      matchLabels:
-        liqo.io/enabled: "true"
+
 EOF
 
 exit 0

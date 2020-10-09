@@ -1,0 +1,23 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: peering-request-operator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: peering-request-operator
+webhooks:
+  - name: peeringrequests.{{ .Release.Namespace }}.{{ .Values.global.peeringRequestOperatorServiceName }}
+    clientConfig:
+      caBundle: eHh4Cg==
+      service:
+        name: {{ .Values.global.peeringRequestOperatorServiceName }}
+        namespace: {{ .Release.Namespace }}
+        path: "/validate"
+        port: 8443
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: ["discovery.liqo.io"]
+        apiVersions: ["v1alpha1"]
+        resources: ["peeringrequests"]
+    admissionReviewVersions: ["v1"]
+    sideEffects: None

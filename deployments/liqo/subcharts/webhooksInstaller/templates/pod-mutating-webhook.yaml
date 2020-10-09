@@ -1,0 +1,28 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutatepodtoleration
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: mutatepodtoleration
+webhooks:
+  - name: mutatepodtoleration.{{ .Release.Namespace }}.{{ .Values.global.podMutatorServiceName }}
+    clientConfig:
+      caBundle: eHh4Cg==
+      service:
+        name: {{ .Values.global.podMutatorServiceName }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate"
+        port: 443
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    sideEffects: None
+    timeoutSeconds: 5
+    reinvocationPolicy: Never
+    failurePolicy: Ignore
+    namespaceSelector:
+      matchLabels:
+        liqo.io/enabled: "true"

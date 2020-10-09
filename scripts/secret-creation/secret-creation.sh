@@ -114,26 +114,7 @@ spec:
   - server auth
 EOF
 
-# verify CSR has been created
-while true; do
-    if kubectl get csr "${CSR_NAME}";
-    then
-        break
-    fi
-done
-
-echo "Wait for CSR to be signed"
-while true;
-  do
-     check=$(kubectl get certificatesigningrequests.certificates.k8s.io "${CSR_NAME}" -o jsonpath='{.status.conditions[:1].type}')
-     if [[ $check == "Approved" ]]; then
-       echo "Approved!"
-       kubectl get csr "${CSR_NAME}" -o jsonpath='{.status.certificate}' | base64 -d > server.crt
-       break
-     fi
-     echo "Waiting for approval of CSR: ${CSR_NAME}"
-     sleep 3
-done
+z
 
 serverCert=$(kubectl get csr "${CSR_NAME}" -o jsonpath='{.status.certificate}')
 echo "${serverCert}" | openssl base64 -d -A -out ${tmpdir}/server-cert.pem

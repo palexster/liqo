@@ -1,0 +1,48 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-mutator-config
+  namespace: default
+data:
+  SERVICE_NAME: {{ .Values.global.podMutatorServiceName }}
+  SECRET_NAME: {{ .Values.global.podMutatorSecretName }}
+  WEBHOOK_TYPE: "mutatingwebhookconfigurations.admissionregistration.k8s.io"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: peering-request-config
+  namespace: default
+data:
+  SERVICE_NAME: {{ .Values.global.peeringRequestOperatorServiceName }}
+  SECRET_NAME: {{ .Values.global.peeringRequestOperatorSecretName }}
+  WEBHOOK_TYPE: "validatingwebhookconfigurations.admissionregistration.k8s.io"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: webhooks-installer
+spec:
+  template:
+    spec:
+      containers:
+        - name: webhooks-installer
+          image: mlvc/pm
+          args:
+            - "/etc/liqo"
+            - {{ .Release.Namespace }}
+          volumeMounts:
+            - name: pod-mutator-volume
+              mountPath: /etc/liqo/pod-mutator
+            - name: peering-request-volume
+              mountPath: /etc/liqo/peering-request
+      restartPolicy: Never
+      volumes:
+        - name:  pod-mutator-volume
+          configMap:
+            name: pod-mutator-config
+        - name: peering-request-volume
+          configMap:
+            name: peering-request-config
+  backoffLimit: 4
