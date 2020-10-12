@@ -6,6 +6,7 @@ import (
 	"github.com/liqotech/liqo/internal/discovery/kubeconfig"
 	advpkg "github.com/liqotech/liqo/pkg/advertisement-operator"
 	"github.com/liqotech/liqo/pkg/crdClient"
+	"github.com/liqotech/liqo/pkg/kubevirt"
 	pkg "github.com/liqotech/liqo/pkg/virtualKubelet"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -400,12 +401,19 @@ func GetClusterResources(nodes []corev1.Node) (corev1.ResourceList, []corev1.Con
 	cpu := resource.Quantity{}
 	ram := resource.Quantity{}
 	pods := resource.Quantity{}
+	kvm := resource.Quantity{}
+	tun := resource.Quantity{}
+	vhostNet := resource.Quantity{}
 	clusterImages := make([]corev1.ContainerImage, 0)
 
 	for _, node := range nodes {
 		cpu.Add(*node.Status.Allocatable.Cpu())
 		ram.Add(*node.Status.Allocatable.Memory())
 		pods.Add(*node.Status.Allocatable.Pods())
+
+		getAndAdd(&node.Status.Allocatable, &kvm, kubevirt.KubevirtKvm)
+		getAndAdd(&node.Status.Allocatable, &tun, kubevirt.KubevirtTun)
+		getAndAdd(&node.Status.Allocatable, &vhostNet, kubevirt.KubevirtVhostNet)
 
 		nodeImages := GetNodeImages(node)
 		clusterImages = append(clusterImages, nodeImages...)
@@ -414,7 +422,23 @@ func GetClusterResources(nodes []corev1.Node) (corev1.ResourceList, []corev1.Con
 	availability[corev1.ResourceCPU] = cpu
 	availability[corev1.ResourceMemory] = ram
 	availability[corev1.ResourcePods] = pods
+	insertIfNotZero(&availability, kubevirt.KubevirtKvm, &kvm)
+	insertIfNotZero(&availability, kubevirt.KubevirtTun, &tun)
+	insertIfNotZero(&availability, kubevirt.KubevirtVhostNet, &vhostNet)
 	return availability, clusterImages
+}
+
+func getAndAdd(src *corev1.ResourceList, dst *resource.Quantity, key corev1.ResourceName) {
+	qnt, ok := (*src)[key]
+	if ok {
+		dst.Add(qnt)
+	}
+}
+
+func insertIfNotZero(dst *corev1.ResourceList, key corev1.ResourceName, qnt *resource.Quantity) {
+	if !qnt.IsZero() {
+		(*dst)[key] = *qnt
+	}
 }
 
 func GetNodeImages(node corev1.Node) []corev1.ContainerImage {
@@ -458,11 +482,11 @@ func ComputeAnnouncedResources(physicalNodes *corev1.NodeList, reqs corev1.Resou
 	cpu.SetScaled(cpu.MilliValue()*sharingPercentage/100, resource.Milli)
 	mem.Set(mem.Value() * sharingPercentage / 100)
 	pods.Set(pods.Value() * sharingPercentage / 100)
-	availability = corev1.ResourceList{
-		corev1.ResourceCPU:    cpu,
-		corev1.ResourceMemory: mem,
-		corev1.ResourcePods:   pods,
-	}
+
+	availability = allocatable.DeepCopy()
+	availability[corev1.ResourceCPU] = cpu
+	availability[corev1.ResourceMemory] = mem
+	availability[corev1.ResourcePods] = pods
 
 	return availability, images
 }
