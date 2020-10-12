@@ -6,7 +6,6 @@ import (
 	"github.com/liqotech/liqo/internal/discovery/kubeconfig"
 	advpkg "github.com/liqotech/liqo/pkg/advertisement-operator"
 	"github.com/liqotech/liqo/pkg/crdClient"
-	"github.com/liqotech/liqo/pkg/kubevirt"
 	pkg "github.com/liqotech/liqo/pkg/virtualKubelet"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -396,48 +395,31 @@ func getPodsTotalRequestsAndLimits(podList *corev1.PodList) (reqs map[corev1.Res
 	return
 }
 
-// get cluster resources (cpu, ram and pods) and images
+// get cluster resources (cpu, ram, pods, ...) and images
 func GetClusterResources(nodes []corev1.Node) (corev1.ResourceList, []corev1.ContainerImage) {
-	cpu := resource.Quantity{}
-	ram := resource.Quantity{}
-	pods := resource.Quantity{}
-	kvm := resource.Quantity{}
-	tun := resource.Quantity{}
-	vhostNet := resource.Quantity{}
 	clusterImages := make([]corev1.ContainerImage, 0)
 
+	availability := corev1.ResourceList{}
 	for _, node := range nodes {
-		cpu.Add(*node.Status.Allocatable.Cpu())
-		ram.Add(*node.Status.Allocatable.Memory())
-		pods.Add(*node.Status.Allocatable.Pods())
-
-		getAndAdd(&node.Status.Allocatable, &kvm, kubevirt.KubevirtKvm)
-		getAndAdd(&node.Status.Allocatable, &tun, kubevirt.KubevirtTun)
-		getAndAdd(&node.Status.Allocatable, &vhostNet, kubevirt.KubevirtVhostNet)
+		addResourceLists(&availability, &node.Status.Allocatable)
 
 		nodeImages := GetNodeImages(node)
 		clusterImages = append(clusterImages, nodeImages...)
 	}
-	availability := corev1.ResourceList{}
-	availability[corev1.ResourceCPU] = cpu
-	availability[corev1.ResourceMemory] = ram
-	availability[corev1.ResourcePods] = pods
-	insertIfNotZero(&availability, kubevirt.KubevirtKvm, &kvm)
-	insertIfNotZero(&availability, kubevirt.KubevirtTun, &tun)
-	insertIfNotZero(&availability, kubevirt.KubevirtVhostNet, &vhostNet)
 	return availability, clusterImages
 }
 
-func getAndAdd(src *corev1.ResourceList, dst *resource.Quantity, key corev1.ResourceName) {
-	qnt, ok := (*src)[key]
-	if ok {
-		dst.Add(qnt)
-	}
-}
-
-func insertIfNotZero(dst *corev1.ResourceList, key corev1.ResourceName, qnt *resource.Quantity) {
-	if !qnt.IsZero() {
-		(*dst)[key] = *qnt
+func addResourceLists(dst *corev1.ResourceList, toAdd *corev1.ResourceList) {
+	for k, v := range *toAdd {
+		qnt, ok := (*dst)[k]
+		if ok {
+			// value already exists, add to it
+			qnt.Add(v)
+			(*dst)[k] = qnt
+		} else {
+			// value does not exists, create it
+			(*dst)[k] = v.DeepCopy()
+		}
 	}
 }
 
