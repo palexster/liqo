@@ -71,6 +71,29 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 		}
 	}
 
+	// copy all init containers from input pod
+	initContainers := make([]v1.Container, len(pod.Spec.InitContainers))
+	for i := 0; i < len(pod.Spec.InitContainers); i++ {
+		// filter volumeMounts related to volumes which have been filtered
+		volumeMounts := FilterVolumeMounts(volumes, pod.Spec.InitContainers[i].VolumeMounts)
+
+		initContainers[i] = v1.Container{
+			Name:            pod.Spec.InitContainers[i].Name,
+			Image:           pod.Spec.InitContainers[i].Image,
+			Command:         pod.Spec.InitContainers[i].Command,
+			Args:            pod.Spec.InitContainers[i].Args,
+			WorkingDir:      pod.Spec.InitContainers[i].WorkingDir,
+			Ports:           pod.Spec.InitContainers[i].Ports,
+			Env:             pod.Spec.InitContainers[i].Env,
+			Resources:       pod.Spec.InitContainers[i].Resources,
+			LivenessProbe:   pod.Spec.InitContainers[i].LivenessProbe,
+			ReadinessProbe:  pod.Spec.InitContainers[i].ReadinessProbe,
+			StartupProbe:    pod.Spec.InitContainers[i].StartupProbe,
+			SecurityContext: pod.Spec.InitContainers[i].SecurityContext,
+			VolumeMounts:    volumeMounts,
+		}
+	}
+
 	affinity := v1.Affinity{
 		NodeAffinity: &v1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
@@ -91,9 +114,11 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 
 	// create an empty Spec for the output pod, copying only "Containers" field
 	podSpec := v1.PodSpec{
-		Containers: containers,
-		Affinity:   affinity.DeepCopy(),
-		Volumes:    volumes,
+		Containers:       containers,
+		Affinity:         affinity.DeepCopy(),
+		Volumes:          volumes,
+		ImagePullSecrets: pod.Spec.ImagePullSecrets,
+		InitContainers:   initContainers,
 		//TODO: check if we need other fields
 	}
 
