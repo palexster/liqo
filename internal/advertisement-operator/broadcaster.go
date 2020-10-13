@@ -6,6 +6,7 @@ import (
 	"github.com/liqotech/liqo/internal/discovery/kubeconfig"
 	advpkg "github.com/liqotech/liqo/pkg/advertisement-operator"
 	"github.com/liqotech/liqo/pkg/crdClient"
+	"github.com/liqotech/liqo/pkg/labelPolicy"
 	pkg "github.com/liqotech/liqo/pkg/virtualKubelet"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -269,7 +270,7 @@ func (b *AdvertisementBroadcaster) GetResourcesForAdv() (physicalNodes, virtualN
 	// compute resources to be announced to the other cluster
 	availability, images = ComputeAnnouncedResources(physicalNodes, reqs, int64(b.ClusterConfig.AdvertisementConfig.OutgoingConfig.ResourceSharingPercentage))
 
-	labels = GetLabels(physicalNodes)
+	labels = GetLabels(physicalNodes, b.ClusterConfig.AdvertisementConfig.LabelPolicies)
 
 	return physicalNodes, virtualNodes, availability, limits, images, labels, nil
 }
@@ -447,10 +448,14 @@ func GetNodeImages(node corev1.Node) []corev1.ContainerImage {
 }
 
 // get labels for advertisement
-func GetLabels(physicalNodes *corev1.NodeList) (labels map[string]string) {
+func GetLabels(physicalNodes *corev1.NodeList, labelPolicies []configv1alpha1.LabelPolicy) (labels map[string]string) {
 	labels = make(map[string]string)
-	// TODO: use policies to get labels from other nodes
-	labels["test"] = "true"
+	if labelPolicies == nil {
+		return labels
+	}
+	for _, lblPol := range labelPolicies {
+		labels[lblPol.Key] = labelPolicy.GetInstance(lblPol.Policy).Process(physicalNodes, lblPol.Key)
+	}
 	return labels
 }
 

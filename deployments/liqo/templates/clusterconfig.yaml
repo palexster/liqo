@@ -14,6 +14,9 @@ spec:
       enableBroadcaster: true
     keepaliveThreshold: 3
     keepaliveRetryTime: 20
+    labelPolicies:
+      - key: "kubevirt.io/schedulable"
+        policy: LabelPolicyOneTrue
   discoveryConfig:
     clusterName: {{ .Values.clusterName}}
     autojoin: true

@@ -64,6 +64,24 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
+                  labelPolicies:
+                    description: LabelPolicies containes the policies for each label to be added to remote virtual nodes
+                    items:
+                      properties:
+                        key:
+                          description: Label Key
+                          type: string
+                        policy:
+                          default: LabelPolicyOneTrue
+                          description: Merge labels Policy
+                          enum:
+                          - LabelPolicyOneTrue
+                          - LabelPolicyAllTrue
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
                   outgoingConfig:
                     description: OutgoingConfig defines the behaviour for the creation of Advertisements on other clusters
                     properties:
