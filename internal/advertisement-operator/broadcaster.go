@@ -167,7 +167,7 @@ func (b *AdvertisementBroadcaster) GenerateAdvertisement() {
 			continue
 		}
 
-		_, virtualNodes, availability, limits, images, err := b.GetResourcesForAdv()
+		_, virtualNodes, availability, limits, images, labels, err := b.GetResourcesForAdv()
 		if err != nil {
 			klog.Errorln(err, "Error while computing resources for Advertisement")
 			time.Sleep(1 * time.Minute)
@@ -175,7 +175,7 @@ func (b *AdvertisementBroadcaster) GenerateAdvertisement() {
 		}
 
 		// create the Advertisement on the foreign cluster
-		advToCreate := b.CreateAdvertisement(virtualNodes, availability, images, limits)
+		advToCreate := b.CreateAdvertisement(virtualNodes, availability, images, limits, labels)
 		adv, err := b.SendAdvertisementToForeignCluster(advToCreate)
 		if err != nil {
 			klog.Errorln(err, "Error while sending Advertisement to cluster "+b.ForeignClusterId)
@@ -194,7 +194,7 @@ func (b *AdvertisementBroadcaster) GenerateAdvertisement() {
 
 // create advertisement message
 func (b *AdvertisementBroadcaster) CreateAdvertisement(virtualNodes *corev1.NodeList,
-	availability corev1.ResourceList, images []corev1.ContainerImage, limits corev1.ResourceList) advtypes.Advertisement {
+	availability corev1.ResourceList, images []corev1.ContainerImage, limits corev1.ResourceList, labels map[string]string) advtypes.Advertisement {
 
 	// set prices field
 	prices := ComputePrices(images)
@@ -228,6 +228,7 @@ func (b *AdvertisementBroadcaster) CreateAdvertisement(virtualNodes *corev1.Node
 				Scopes:        nil,
 				ScopeSelector: nil,
 			},
+			Labels:     labels,
 			Neighbors:  neighbours,
 			Properties: nil,
 			Prices:     prices,
@@ -242,33 +243,35 @@ func (b *AdvertisementBroadcaster) CreateAdvertisement(virtualNodes *corev1.Node
 	return adv
 }
 
-func (b *AdvertisementBroadcaster) GetResourcesForAdv() (physicalNodes, virtualNodes *corev1.NodeList, availability, limits corev1.ResourceList, images []corev1.ContainerImage, err error) {
+func (b *AdvertisementBroadcaster) GetResourcesForAdv() (physicalNodes, virtualNodes *corev1.NodeList, availability, limits corev1.ResourceList, images []corev1.ContainerImage, labels map[string]string, err error) {
 	// get physical and virtual nodes in the cluster
 	physicalNodes, err = b.LocalClient.Client().CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{LabelSelector: "type != virtual-node"})
 	if err != nil {
 		klog.Errorln("Could not get physical nodes, retry in 1 minute")
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	virtualNodes, err = b.LocalClient.Client().CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{LabelSelector: "type = virtual-node"})
 	if err != nil {
 		klog.Errorln("Could not get virtual nodes, retry in 1 minute")
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	// get resources used by pods in the cluster
 	fieldSelector, err := fields.ParseSelector("status.phase!=" + string(corev1.PodSucceeded) + ",status.phase!=" + string(corev1.PodFailed))
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	nodeNonTerminatedPodsList, err := b.LocalClient.Client().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector.String()})
 	if err != nil {
 		klog.Errorln("Could not list pods, retry in 1 minute")
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	reqs, limits := GetAllPodsResources(nodeNonTerminatedPodsList)
 	// compute resources to be announced to the other cluster
 	availability, images = ComputeAnnouncedResources(physicalNodes, reqs, int64(b.ClusterConfig.AdvertisementConfig.OutgoingConfig.ResourceSharingPercentage))
 
-	return physicalNodes, virtualNodes, availability, limits, images, nil
+	labels = GetLabels(physicalNodes)
+
+	return physicalNodes, virtualNodes, availability, limits, images, labels, nil
 }
 
 func (b *AdvertisementBroadcaster) SendAdvertisementToForeignCluster(advToCreate advtypes.Advertisement) (*advtypes.Advertisement, error) {
@@ -441,6 +444,14 @@ func GetNodeImages(node corev1.Node) []corev1.ContainerImage {
 		i++
 	}
 	return images
+}
+
+// get labels for advertisement
+func GetLabels(physicalNodes *corev1.NodeList) (labels map[string]string) {
+	labels = make(map[string]string)
+	// TODO: use policies to get labels from other nodes
+	labels["test"] = "true"
+	return labels
 }
 
 // create announced resources for advertisement

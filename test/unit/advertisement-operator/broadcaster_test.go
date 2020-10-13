@@ -193,10 +193,11 @@ func prepareAdv(b *advop.AdvertisementBroadcaster) advtypes.Advertisement {
 	reqs, limits := advop.GetAllPodsResources(pods)
 	availability, _ := advop.ComputeAnnouncedResources(pNodes, reqs, int64(b.ClusterConfig.AdvertisementConfig.OutgoingConfig.ResourceSharingPercentage))
 	neighbours := make(map[corev1.ResourceName]corev1.ResourceList)
+	labels := make(map[string]string)
 	for _, vNode := range vNodes.Items {
 		neighbours[corev1.ResourceName(vNode.Name)] = vNode.Status.Allocatable
 	}
-	return b.CreateAdvertisement(vNodes, availability, images, limits)
+	return b.CreateAdvertisement(vNodes, availability, images, limits, labels)
 }
 
 func TestGetClusterResources(t *testing.T) {
@@ -252,6 +253,7 @@ func TestCreateAdvertisement(t *testing.T) {
 	reqs, limits := advop.GetAllPodsResources(pods)
 	availability, _ := advop.ComputeAnnouncedResources(pNodes, reqs, int64(sharingPercentage))
 	neighbours := make(map[corev1.ResourceName]corev1.ResourceList)
+	labels := make(map[string]string)
 	for _, vNode := range vNodes.Items {
 		neighbours[corev1.ResourceName(vNode.Name)] = vNode.Status.Allocatable
 	}
@@ -259,7 +261,7 @@ func TestCreateAdvertisement(t *testing.T) {
 	config := createFakeClusterConfig()
 	broadcaster := createBroadcaster(config.Spec)
 
-	adv := broadcaster.CreateAdvertisement(vNodes, availability, images, limits)
+	adv := broadcaster.CreateAdvertisement(vNodes, availability, images, limits, labels)
 
 	assert.NotEmpty(t, adv.Name, "Name should be provided")
 	assert.Empty(t, adv.ResourceVersion)
@@ -292,7 +294,7 @@ func TestGetResourceForAdv(t *testing.T) {
 		t.Fatal("Available resources cannot be negative")
 	}
 
-	pNodes2, vNodes2, availability2, limits2, images2, err := b.GetResourcesForAdv()
+	pNodes2, vNodes2, availability2, limits2, images2, _, err := b.GetResourcesForAdv()
 	assert.Nil(t, err)
 	assert.Equal(t, pNodes, pNodes2)
 	assert.Equal(t, vNodes, vNodes2)

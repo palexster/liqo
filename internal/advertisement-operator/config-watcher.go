@@ -46,11 +46,11 @@ func (b *AdvertisementBroadcaster) WatchConfiguration(kubeconfigPath string, cli
 				b.ClusterConfig.AdvertisementConfig.OutgoingConfig.ResourceSharingPercentage, newConfig.ResourceSharingPercentage)
 			b.ClusterConfig.AdvertisementConfig.OutgoingConfig = newConfig
 			// update Advertisement with new resources (given by the new sharing percentage)
-			_, virtualNodes, availability, limits, images, err := b.GetResourcesForAdv()
+			_, virtualNodes, availability, limits, images, labels, err := b.GetResourcesForAdv()
 			if err != nil {
 				klog.Errorln(err, "Error while computing resources for Advertisement")
 			}
-			advToCreate := b.CreateAdvertisement(virtualNodes, availability, images, limits)
+			advToCreate := b.CreateAdvertisement(virtualNodes, availability, images, limits, labels)
 			_, err = b.SendAdvertisementToForeignCluster(advToCreate)
 			if err != nil {
 				klog.Errorln(err, "Error while sending Advertisement to cluster "+b.ForeignClusterId)

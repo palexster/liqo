@@ -182,6 +182,9 @@ func (p *KubernetesProvider) updateFromAdv(adv advtypes.Advertisement) error {
 		no.Status.Capacity[k] = v
 		no.Status.Allocatable[k] = v
 	}
+	for k, v := range adv.Spec.Labels {
+		no.Labels[k] = v
+	}
 	if no.Status.Conditions == nil {
 		no.Status.Conditions = []v1.NodeCondition{
 			{
