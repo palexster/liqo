@@ -53,22 +53,7 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 	for i := 0; i < len(pod.Spec.Containers); i++ {
 		// filter volumeMounts related to volumes which have been filtered
 		volumeMounts := FilterVolumeMounts(volumes, pod.Spec.Containers[i].VolumeMounts)
-
-		containers[i] = v1.Container{
-			Name:            pod.Spec.Containers[i].Name,
-			Image:           pod.Spec.Containers[i].Image,
-			Command:         pod.Spec.Containers[i].Command,
-			Args:            pod.Spec.Containers[i].Args,
-			WorkingDir:      pod.Spec.Containers[i].WorkingDir,
-			Ports:           pod.Spec.Containers[i].Ports,
-			Env:             pod.Spec.Containers[i].Env,
-			Resources:       pod.Spec.Containers[i].Resources,
-			LivenessProbe:   pod.Spec.Containers[i].LivenessProbe,
-			ReadinessProbe:  pod.Spec.Containers[i].ReadinessProbe,
-			StartupProbe:    pod.Spec.Containers[i].StartupProbe,
-			SecurityContext: pod.Spec.Containers[i].SecurityContext,
-			VolumeMounts:    volumeMounts,
-		}
+		containers[i] = translateContainer(pod.Spec.Containers[i], volumeMounts)
 	}
 
 	// copy all init containers from input pod
@@ -76,22 +61,7 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 	for i := 0; i < len(pod.Spec.InitContainers); i++ {
 		// filter volumeMounts related to volumes which have been filtered
 		volumeMounts := FilterVolumeMounts(volumes, pod.Spec.InitContainers[i].VolumeMounts)
-
-		initContainers[i] = v1.Container{
-			Name:            pod.Spec.InitContainers[i].Name,
-			Image:           pod.Spec.InitContainers[i].Image,
-			Command:         pod.Spec.InitContainers[i].Command,
-			Args:            pod.Spec.InitContainers[i].Args,
-			WorkingDir:      pod.Spec.InitContainers[i].WorkingDir,
-			Ports:           pod.Spec.InitContainers[i].Ports,
-			Env:             pod.Spec.InitContainers[i].Env,
-			Resources:       pod.Spec.InitContainers[i].Resources,
-			LivenessProbe:   pod.Spec.InitContainers[i].LivenessProbe,
-			ReadinessProbe:  pod.Spec.InitContainers[i].ReadinessProbe,
-			StartupProbe:    pod.Spec.InitContainers[i].StartupProbe,
-			SecurityContext: pod.Spec.InitContainers[i].SecurityContext,
-			VolumeMounts:    volumeMounts,
-		}
+		initContainers[i] = translateContainer(pod.Spec.InitContainers[i], volumeMounts)
 	}
 
 	affinity := v1.Affinity{
@@ -114,11 +84,16 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 
 	// create an empty Spec for the output pod, copying only "Containers" field
 	podSpec := v1.PodSpec{
-		Containers:       containers,
-		Affinity:         affinity.DeepCopy(),
-		Volumes:          volumes,
-		ImagePullSecrets: pod.Spec.ImagePullSecrets,
-		InitContainers:   initContainers,
+		Containers:                    containers,
+		Affinity:                      affinity.DeepCopy(),
+		Volumes:                       volumes,
+		ImagePullSecrets:              pod.Spec.ImagePullSecrets,
+		InitContainers:                initContainers,
+		RestartPolicy:                 pod.Spec.RestartPolicy,
+		TerminationGracePeriodSeconds: pod.Spec.TerminationGracePeriodSeconds,
+		SecurityContext:               pod.Spec.SecurityContext,
+		Hostname:                      pod.Spec.Hostname,
+		NodeSelector:                  pod.Spec.NodeSelector,
 		//TODO: check if we need other fields
 	}
 
@@ -132,6 +107,24 @@ func H2FTranslate(pod *v1.Pod, nattedNS string) *v1.Pod {
 		ObjectMeta: objectMeta,
 		Spec:       podSpec,
 		Status:     pod.Status,
+	}
+}
+
+func translateContainer(container v1.Container, volumes []v1.VolumeMount) v1.Container {
+	return v1.Container{
+		Name:            container.Name,
+		Image:           container.Image,
+		Command:         container.Command,
+		Args:            container.Args,
+		WorkingDir:      container.WorkingDir,
+		Ports:           container.Ports,
+		Env:             container.Env,
+		Resources:       container.Resources,
+		LivenessProbe:   container.LivenessProbe,
+		ReadinessProbe:  container.ReadinessProbe,
+		StartupProbe:    container.StartupProbe,
+		SecurityContext: container.SecurityContext,
+		VolumeMounts:    volumes,
 	}
 }
 
