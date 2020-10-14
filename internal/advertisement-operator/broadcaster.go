@@ -465,27 +465,22 @@ func ComputeAnnouncedResources(physicalNodes *corev1.NodeList, reqs corev1.Resou
 	allocatable, images := GetClusterResources(physicalNodes.Items)
 
 	// subtract used resources from available ones to have available resources
-	cpu := allocatable.Cpu().DeepCopy()
-	cpu.Sub(reqs.Cpu().DeepCopy())
-	if cpu.Value() < 0 {
-		cpu.Set(0)
-	}
-	mem := allocatable.Memory().DeepCopy()
-	if mem.Value() < 0 {
-		mem.Set(0)
-	}
-	mem.Sub(reqs.Memory().DeepCopy())
-	pods := allocatable.Pods().DeepCopy()
-
-	cpu.SetScaled(cpu.MilliValue()*sharingPercentage/100, resource.Milli)
-	mem.Set(mem.Value() * sharingPercentage / 100)
-	pods.Set(pods.Value() * sharingPercentage / 100)
-
 	availability = allocatable.DeepCopy()
-	availability[corev1.ResourceCPU] = cpu
-	availability[corev1.ResourceMemory] = mem
-	availability[corev1.ResourcePods] = pods
-
+	for k, v := range availability {
+		if req, ok := reqs[k]; ok {
+			v.Sub(req)
+		}
+		if v.Value() < 0 {
+			v.Set(0)
+		}
+		if k == corev1.ResourceCPU {
+			// use millis
+			v.SetScaled(v.MilliValue()*sharingPercentage/100, resource.Milli)
+		} else {
+			v.Set(v.Value() * sharingPercentage / 100)
+		}
+		availability[k] = v
+	}
 	return availability, images
 }
 
